@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>瞳距测量 - 专业测量版</title>
+    <style>
+        /* ================= 专业测量视觉体系 ================= */
+        :root {
+            /* 背景：克制的仪器面板底色 */
+            --bg-color: #F6F8FB;
+            
+            /* 主题色系：深蓝、医疗蓝、青绿 */
+            --primary-light: #EAF0FF;
+            --primary-main: #2454FF;
+            --primary-dark: #102033;
+            --primary-gradient: linear-gradient(135deg, #2454FF 0%, #12B8A6 100%);
+            --primary-shadow: rgba(36, 84, 255, 0.22);
+            
+            /* 文字色彩 */
+            --text-title: #182033;
+            --text-body: #5E6678;
+            --text-muted: #9AA4B5;
+            
+            /* 卡片材质 */
+            --card-bg: #FFFFFF;
+            --card-border: #E1E7F0;
+            --card-shadow: 0 18px 44px rgba(18, 28, 45, 0.08);
+            --card-shadow-inner: none;
+            
+            /* 几何圆角 */
+            --radius-sm: 8px;
+            --radius-md: 8px;
+            --radius-lg: 8px;
+            --radius-pill: 16px;
+            
+            --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-body);
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 纯CSS绘制的背景环境光晕 */
+        .ambient-light-1 {
+            display: none;
+            position: fixed; top: -15vw; left: -15vw; width: 60vw; height: 60vw;
+            background: radial-gradient(circle, rgba(144, 156, 255, 0.15) 0%, transparent 70%);
+            border-radius: 50%; pointer-events: none; z-index: 0;
+        }
+        .ambient-light-2 {
+            display: none;
+            position: fixed; bottom: -20vw; right: -20vw; width: 70vw; height: 70vw;
+            background: radial-gradient(circle, rgba(61, 209, 216, 0.1) 0%, transparent 70%);
+            border-radius: 50%; pointer-events: none; z-index: 0;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ================= 悬浮导航栏 ================= */
+        .top-nav {
+            padding: 30px 24px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 8px 16px rgba(107, 120, 255, 0.05), inset 0 2px 4px #fff;
+            display: flex; justify-content: center; align-items: center;
+            color: var(--text-title); cursor: pointer;
+            backdrop-filter: blur(8px);
+        }
+
+        .nav-title-pill {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 8px 20px;
+            border-radius: var(--radius-pill);
+            font-size: 0.95rem; font-weight: 700; color: var(--text-title);
+            box-shadow: 0 8px 16px rgba(107, 120, 255, 0.05), inset 0 2px 4px #fff;
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ================= 视图容器与动画 ================= */
+        .main-content {
+            flex: 1; padding: 20px 24px 40px; display: flex; flex-direction: column;
+        }
+
+        .view-section {
+            display: none; flex: 1; flex-direction: column;
+            animation: softRise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            opacity: 0; transform: translateY(20px);
+        }
+        .view-section.active { display: flex; }
+
+        @keyframes softRise { to { opacity: 1; transform: translateY(0); } }
+
+        /* ================= 悬浮玻璃卡片 ================= */
+        .glass-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 24px; margin-bottom: 24px;
+            box-shadow: var(--card-shadow), var(--card-shadow-inner);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* ================= 果冻感按钮系统 ================= */
+        .btn-fluid {
+            width: 100%; padding: 18px; border-radius: var(--radius-pill);
+            font-size: 1.05rem; font-weight: 700; letter-spacing: 0;
+            border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: #FFFFFF;
+            box-shadow: 0 12px 24px var(--primary-shadow), inset 0 2px 4px rgba(255,255,255,0.3);
+        }
+        .btn-primary:active { transform: translateY(2px) scale(0.98); box-shadow: 0 6px 12px var(--primary-shadow); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.8); color: var(--primary-main);
+            box-shadow: 0 8px 16px rgba(107, 120, 255, 0.05), inset 0 2px 4px #fff;
+            border: 1px solid var(--card-border);
+        }
+        .btn-secondary:active { transform: translateY(2px) scale(0.98); }
+
+        /* ================= 视图 1: 首页 ================= */
+        .hero-module { text-align: center; padding: 10px 0 30px; }
+        
+        /* 拟物感 3D 浮动容器 */
+        .hero-icon-container {
+            width: 130px; height: 130px; margin: 0 auto 32px;
+            background: linear-gradient(145deg, #ffffff, #e6e9ff);
+            border-radius: 40px;
+            box-shadow:  20px 20px 40px rgba(144, 156, 255, 0.15), -20px -20px 40px #ffffff, inset 0 4px 8px rgba(255,255,255,0.8);
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }
+        
+        .hero-icon-inner {
+            width: 76px; height: 76px; border-radius: 24px;
+            background: var(--primary-gradient); color: #fff;
+            box-shadow: 0 10px 20px var(--primary-shadow), inset 0 -4px 10px rgba(0,0,0,0.1), inset 0 4px 10px rgba(255,255,255,0.5);
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .hero-title { font-size: 1.6rem; font-weight: 800; color: var(--text-title); margin-bottom: 12px; }
+        .hero-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; padding: 0 10px; }
+
+        .record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 4px; }
+        .record-title { font-size: 1.1rem; font-weight: 700; color: var(--text-title); }
+        .record-more { font-size: 0.85rem; color: var(--primary-main); font-weight: 600; cursor: pointer; }
+
+        /* 单条记录胶囊 */
+        .record-pill {
+            background: var(--card-bg); border-radius: var(--radius-md); padding: 16px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 8px 24px rgba(107, 120, 255, 0.04);
+            border: 1px solid var(--card-border); margin-bottom: 12px;
+        }
+        .record-pill-left { display: flex; align-items: center; gap: 16px; }
+        .record-icon {
+            width: 44px; height: 44px; border-radius: 14px; background: #F0F2FF;
+            color: var(--primary-main); display: flex; justify-content: center; align-items: center;
+        }
+        .r-time { font-size: 0.95rem; font-weight: 700; color: var(--text-title); margin-bottom: 4px; }
+        .r-device { font-size: 0.8rem; color: var(--text-muted); }
+        .r-value { font-size: 1.3rem; font-weight: 800; color: var(--primary-main); }
+        .r-unit { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-left: 2px; }
+
+        /* ================= 视图 2: 指南 ================= */
+        .guide-header { text-align: center; margin-bottom: 30px; }
+        .guide-header h2 { font-size: 1.4rem; font-weight: 800; color: var(--text-title); margin-bottom: 8px;}
+        .guide-header p { font-size: 0.9rem; color: var(--text-muted); }
+
+        .guide-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
+        .guide-item {
+            background: var(--card-bg); border-radius: var(--radius-md); padding: 20px;
+            box-shadow: 0 8px 24px rgba(107, 120, 255, 0.04); border: 1px solid var(--card-border);
+            display: flex; align-items: flex-start; gap: 16px;
+        }
+        .guide-num-wrap {
+            width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+            background: var(--primary-gradient); color: #fff; font-weight: 800; font-size: 0.9rem;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 4px 10px var(--primary-shadow); margin-top: 2px;
+        }
+        .guide-content h4 { font-size: 1.05rem; font-weight: 700; color: var(--text-title); margin-bottom: 6px; }
+        .guide-content p { font-size: 0.85rem; line-height: 1.6; color: var(--text-body); }
+
+        /* ================= 视图 3: 沉浸式相机 ================= */
+        #view-camera { padding: 0; position: absolute; inset: 0; z-index: 200; border-radius: 0; }
+        .cam-wrapper {
+            width: 100%; height: 100%; background: #000; position: relative; overflow: hidden;
+        }
+        .cam-feed {
+            width: 100%; height: 100%; object-fit: cover;
+            background: linear-gradient(180deg, #1A1C29 0%, #0B0D14 100%);
+            opacity: 0; transition: opacity 0.4s;
+        }
+
+        /* 授权遮罩 */
+        .cam-perm-mask {
+            position: absolute; inset: 0; z-index: 30;
+            background: rgba(11, 13, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 40px; text-align: center;
+        }
+        .perm-icon-3d {
+            width: 80px; height: 80px; border-radius: 24px; margin-bottom: 24px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); color: #fff;
+            display: flex; justify-content: center; align-items: center;
+        }
+        
+        /* 现代极简取景框 */
+        .cam-overlay { position: absolute; inset: 0; z-index: 10; display: none; pointer-events: none; }
+        .focus-ring {
+            position: absolute; top: 18%; left: 15%; right: 15%; bottom: 22%;
+            border: 2px solid rgba(255,255,255,0.2); border-radius: 50% 50% 40% 40% / 50% 50% 50% 50%;
+        }
+        .focus-ring::after {
+            content: ''; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px; border-radius: 50%; background: var(--primary-light);
+            box-shadow: 0 0 10px var(--primary-light);
+        }
+        .card-placeholder {
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            width: 140px; height: 85px; border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: 12px; display: flex; justify-content: center; align-items: center;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .cam-footer {
+            position: absolute; bottom: 0; left: 0; right: 0; padding: 40px 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            display: none; flex-direction: column; align-items: center; z-index: 20;
+        }
+        .cam-status { color: #fff; font-size: 0.95rem; font-weight: 600; margin-bottom: 30px; letter-spacing: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5);}
+        
+        .shutter-btn {
+            width: 80px; height: 80px; border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.6);
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .shutter-core {
+            width: 62px; height: 62px; border-radius: 50%; background: #fff;
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .shutter-btn:active .shutter-core { transform: scale(0.85); background: var(--primary-light); }
+        
+        /* 悬浮返回键 */
+        .cam-back {
+            position: absolute; top: 40px; left: 24px; z-index: 30;
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px);
+            color: #fff; display: flex; justify-content: center; align-items: center; border: none; cursor: pointer;
+        }
+
+        /* ================= 视图 4: 涟漪计算 ================= */
+        .processing-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        .ripple-loader {
+            width: 140px; height: 140px; position: relative; margin-bottom: 40px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .ripple-core {
+            width: 50px; height: 50px; border-radius: 50%; background: var(--primary-gradient);
+            box-shadow: 0 0 20px var(--primary-shadow); z-index: 2;
+        }
+        .ripple-ring {
+            position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--primary-main);
+            animation: rippleExpand 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; opacity: 0;
+        }
+        .r2 { animation-delay: 0.6s; } .r3 { animation-delay: 1.2s; }
+        
+        @keyframes rippleExpand {
+            0% { transform: scale(0.3); opacity: 0.8; border-width: 4px; }
+            100% { transform: scale(1.2); opacity: 0; border-width: 1px; }
+        }
+        .proc-title { font-size: 1.25rem; font-weight: 800; color: var(--text-title); margin-bottom: 8px; }
+        .proc-text { font-size: 0.95rem; color: var(--text-muted); }
+
+        /* ================= 视图 5: 结果仪表盘 ================= */
+        .result-dashboard {
+            background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-color) 100%);
+            border-radius: var(--radius-lg); padding: 40px 24px; text-align: center;
+            box-shadow: var(--card-shadow); border: 1px solid #fff; margin-bottom: 30px;
+        }
+        
+        .r-tag {
+            display: inline-block; background: #F0F2FF; color: var(--primary-main);
+            padding: 6px 16px; border-radius: var(--radius-pill); font-size: 0.85rem; font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .pd-big {
+            font-size: 5rem; font-weight: 800; line-height: 1; letter-spacing: 0;
+            background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 10px 20px rgba(107, 120, 255, 0.2)); margin-bottom: 40px;
+        }
+        .pd-big span { font-size: 1.2rem; font-weight: 700; -webkit-text-fill-color: var(--text-muted); margin-left: 4px; letter-spacing: 0; }
+
+        .sub-grid { display: flex; gap: 16px; }
+        .sub-card {
+            flex: 1; background: #fff; border-radius: var(--radius-md); padding: 20px 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.02); border: 1px solid #F4F6FC;
+        }
+        .sub-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
+        .sub-val { font-size: 1.5rem; font-weight: 800; color: var(--text-title); }
+
+        .btn-group { display: flex; gap: 16px; }
+        .btn-group .btn-fluid { flex: 1; }
+
+    </style>
+</head>
+<body>
+
+<!-- 环境光晕 -->
+<div class="ambient-light-1"></div>
+<div class="ambient-light-2"></div>
+
+<div class="app-container">
+    
+    <!-- 顶部导航 -->
+    <header class="top-nav" id="topNav">
+        <div class="nav-btn" id="btnBack" onclick="goBack()" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </div>
+        <div class="nav-btn" id="btnUser">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        
+        <div class="nav-title-pill" id="navTitle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-main)" stroke-width="2.5" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            瞳距测量
+        </div>
+        
+        <div class="nav-btn" style="border:none; box-shadow:none; background:transparent;"></div> <!-- 占位保持居中 -->
+    </header>
+
+    <main class="main-content">
+        
+        <!-- ================= 首页 ================= -->
+        <section id="view-home" class="view-section active">
+            <div class="hero-module">
+                <div class="hero-icon-container">
+                    <div class="hero-icon-inner">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 22h16"></path><path d="M8 22v-4"></path><path d="M16 22v-4"></path>
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </div>
+                </div>
+                <h1 class="hero-title">智能测算视界</h1>
+                <p class="hero-desc">拍照标点<br>快速得到配镜参考瞳距</p>
+            </div>
+
+            <button class="btn-fluid btn-primary" style="margin-bottom: 40px;" onclick="switchView('view-guide')">
+                <span>开启测量体验</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            </button>
+
+            <div class="record-header">
+                <div class="record-title">测量纪要</div>
+                <div class="record-more">查看全部</div>
+            </div>
+            
+            <div class="record-pill">
+                <div class="record-pill-left">
+                    <div class="record-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <div>
+                        <div class="r-time">今天 14:30</div>
+                        <div class="r-device">智能手机测算</div>
+                    </div>
+                </div>
+                <div><span class="r-value">63.5</span><span class="r-unit">mm</span></div>
+            </div>
+        </section>
+
+        <!-- ================= 指南页 ================= -->
+        <section id="view-guide" class="view-section">
+            <div class="guide-header">
+                <h2>操作指引</h2>
+                <p>只需简单三步，获取精准数据</p>
+            </div>
+            
+            <div class="guide-list">
+                <div class="guide-item">
+                    <div class="guide-num-wrap">1</div>
+                    <div class="guide-content">
+                        <h4>备好参照卡</h4>
+                        <p>请准备一张标准尺寸的磁卡（如身份证或银行卡），系统将以其作为物理参照。</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-num-wrap">2</div>
+                    <div class="guide-content">
+                        <h4>卡片贴紧额头</h4>
+                        <p>将卡片长边平置于额头（眉毛上方），确保手指不要遮挡卡片的两端边缘。</p>
+                    </div>
+                </div>
+                <div class="guide-item">
+                    <div class="guide-num-wrap">3</div>
+                    <div class="guide-content">
+                        <h4>平视并拍摄</h4>
+                        <p>在明亮环境下，面部正对屏幕，双眼平视手机上方的摄像头，保持稳定后点击拍摄。</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-fluid btn-primary" onclick="switchView('view-camera')">我已了解，唤醒镜头</button>
+        </section>
+
+        <!-- ================= 沉浸式相机 UI ================= -->
+        <section id="view-camera" class="view-section">
+            <div class="cam-wrapper">
+                <button class="cam-back" onclick="closeCamera()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+
+                <div class="cam-feed" id="cameraSim"></div>
+
+                <!-- 玻璃态权限遮罩 -->
+                <div class="cam-perm-mask" id="permOverlay">
+                    <div class="perm-icon-3d">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    </div>
+                    <h3 style="color: #fff; font-weight: 800; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: 0;">开启相机权限</h3>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 40px; line-height: 1.6;">我们需要调用摄像头以捕捉面部特征<br>测算全程在本地运行，保护您的隐私</p>
+                    <button class="btn-fluid btn-primary" style="width: 240px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);" onclick="grantCamera()">允许访问</button>
+                </div>
+
+                <!-- 极简辅助线 -->
+                <div class="cam-overlay" id="guidesOverlay">
+                    <div class="focus-ring"></div>
+                    <div class="card-placeholder"></div>
+                </div>
+
+                <!-- 底部控制栏 -->
+                <div class="cam-footer" id="cameraControls">
+                    <div class="cam-status" id="camStatus">请将脸部置于对焦环内</div>
+                    <div class="shutter-btn" onclick="startProcessing()">
+                        <div class="shutter-core"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 解析动画 ================= -->
+        <section id="view-processing" class="view-section">
+            <div class="processing-wrap">
+                <div class="ripple-loader">
+                    <div class="ripple-ring"></div>
+                    <div class="ripple-ring r2"></div>
+                    <div class="ripple-ring r3"></div>
+                    <div class="ripple-core">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    </div>
+                </div>
+                <h3 class="proc-title">正在解析影像</h3>
+                <p class="proc-text" id="processText">建立几何参照基准...</p>
+            </div>
+        </section>
+
+        <!-- ================= 结果展现 ================= -->
+        <section id="view-result" class="view-section">
+            <div class="result-dashboard">
+                <div class="r-tag">双眼平均瞳距</div>
+                <div class="pd-big">63.5<span>mm</span></div>
+
+                <div class="sub-grid">
+                    <div class="sub-card">
+                        <div class="sub-label">右眼</div>
+                        <div class="sub-val">31.7</div>
+                    </div>
+                    <div class="sub-card">
+                        <div class="sub-label">左眼</div>
+                        <div class="sub-val">31.8</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-fluid btn-secondary" onclick="switchView('view-guide')">重新测算</button>
+                <button class="btn-fluid btn-primary" id="saveBtn" onclick="saveResult()">收录报告</button>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+    let viewHistory = ['view-home'];
+
+    function switchView(targetViewId, isBack = false) {
+        // Reset all views
+        document.querySelectorAll('.view-section').forEach(el => {
+            el.classList.remove('active');
+            el.style.animation = 'none'; 
+        });
+        
+        // Activate target
+        const target = document.getElementById(targetViewId);
+        target.offsetHeight; // trigger reflow
+        target.style.animation = 'softRise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards';
+        target.classList.add('active');
+
+        // Nav UI update
+        const topNav = document.getElementById('topNav');
+        const btnUser = document.getElementById('btnUser');
+        const btnBack = document.getElementById('btnBack');
+        const navTitle = document.getElementById('navTitle');
+
+        if (targetViewId === 'view-camera') {
+            topNav.style.display = 'none'; 
+        } else {
+            topNav.style.display = 'flex';
+            
+            if (targetViewId === 'view-home') {
+                btnBack.style.display = 'none';
+                btnUser.style.display = 'flex';
+                navTitle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-main)" stroke-width="2.5" stroke-linecap="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg> 瞳距测量';
+                viewHistory = ['view-home']; 
+            } else {
+                btnUser.style.display = 'none';
+                btnBack.style.display = 'flex';
+                if (!isBack) viewHistory.push(targetViewId);
+                
+                if(targetViewId === 'view-guide') navTitle.innerHTML = '测量指引';
+                if(targetViewId === 'view-processing') navTitle.innerHTML = '运算分析中';
+                if(targetViewId === 'view-result') navTitle.innerHTML = '测算报告';
+            }
+        }
+
+        if (targetViewId === 'view-camera') resetCameraState();
+    }
+
+    function goBack() {
+        if (viewHistory.length > 1) {
+            viewHistory.pop(); 
+            switchView(viewHistory[viewHistory.length - 1], true);
+        }
+    }
+
+    function closeCamera() {
+        viewHistory.pop(); 
+        switchView(viewHistory[viewHistory.length - 1], true);
+    }
+
+    function grantCamera() {
+        const overlay = document.getElementById('permOverlay');
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.4s ease';
+        
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('cameraSim').style.opacity = '1';
+            document.getElementById('guidesOverlay').style.display = 'block';
+            document.getElementById('cameraControls').style.display = 'flex';
+            
+            const status = document.getElementById('camStatus');
+            setTimeout(() => { status.innerText = '识别中，请保持平稳...'; }, 1000);
+            setTimeout(() => { 
+                status.innerText = '焦点锁定，可触动快门'; 
+                status.style.color = '#fff';
+                status.style.textShadow = '0 0 10px rgba(255,255,255,0.8)';
+            }, 2500);
+        }, 400);
+    }
+
+    function resetCameraState() {
+        const overlay = document.getElementById('permOverlay');
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        document.getElementById('cameraSim').style.opacity = '0';
+        document.getElementById('guidesOverlay').style.display = 'none';
+        document.getElementById('cameraControls').style.display = 'none';
+        
+        const status = document.getElementById('camStatus');
+        status.innerText = '请将脸部置于对焦环内';
+        status.style.color = '#fff';
+        status.style.textShadow = '0 2px 4px rgba(0,0,0,0.5)';
+    }
+
+    function startProcessing() {
+        switchView('view-processing');
+        const textEl = document.getElementById('processText');
+        
+        textEl.innerText = '捕捉面部多维特征...';
+        setTimeout(() => { textEl.innerText = '比对物理参照比例...'; }, 1200);
+        setTimeout(() => { textEl.innerText = '推演双瞳精准间距...'; }, 2400);
+        setTimeout(() => { switchView('view-result'); }, 3500);
+    }
+
+    function saveResult() {
+        const btn = document.getElementById('saveBtn');
+        const originalText = btn.innerText;
+        btn.innerText = '收录成功 ✓';
+        btn.style.background = '#4CAF50'; 
+        btn.style.boxShadow = '0 12px 24px rgba(76, 175, 80, 0.4)';
+        
+        setTimeout(() => {
+            switchView('view-home');
+            btn.innerText = originalText;
+            btn.style.background = '';
+            btn.style.boxShadow = '';
+        }, 1200);
+    }
+</script>
+
+</body>
+</html>

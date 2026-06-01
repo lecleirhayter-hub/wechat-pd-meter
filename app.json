@@ -1,0 +1,58 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/eyeTools/eyeTools",
+    "pages/colorVision/colorVision",
+    "pages/childVision/childVision",
+    "pages/blindSpot/blindSpot",
+    "pages/colorGame/colorGame",
+    "pages/tools/tools",
+    "pages/guide/guide",
+    "pages/measure/measure",
+    "pages/mark/mark",
+    "pages/result/result",
+    "pages/history/history"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F6F8FB",
+    "navigationBarTitleText": "瞳距测量",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6F8FB",
+    "backgroundTextStyle": "dark"
+  },
+  "navigateToMiniProgramAppIdList": [
+    "wx245062d0432fffc6",
+    "wxaa8756da58cbcc6d",
+    "wx04b811377b73bfd5",
+    "wx1388577040e6121b",
+    "wx842e55328d3e04d8"
+  ],
+  "tabBar": {
+    "color": "#7A8497",
+    "selectedColor": "#2454FF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "测量",
+        "iconPath": "assets/tab/measure.png",
+        "selectedIconPath": "assets/tab/measure-active.png"
+      },
+      {
+        "pagePath": "pages/eyeTools/eyeTools",
+        "text": "眼测",
+        "iconPath": "assets/tab/eye.png",
+        "selectedIconPath": "assets/tab/eye-active.png"
+      },
+      {
+        "pagePath": "pages/tools/tools",
+        "text": "工具箱",
+        "iconPath": "assets/tab/tools.png",
+        "selectedIconPath": "assets/tab/tools-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}
